@@ -1,0 +1,250 @@
+#+title: Predicting Ethereum
+#+author: Matt Brigida
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/org/theme-read-the-org.setup
+
+
+* Import Libraries and Get Data
+
+#+begin_src python :session py
+import pandas as pd
+import torch
+from torch import nn
+#+end_src
+
+#+RESULTS:
+
+  
+#+begin_src python :session py :cache true
+import cbpro
+import time
+public_client = cbpro.PublicClient()
+
+eth = public_client.get_product_historic_rates('ETH-USD')
+time.sleep(5)
+btc = public_client.get_product_historic_rates('BTC-USD')
+time.sleep(5)
+atom = public_client.get_product_historic_rates('ATOM-USD')
+time.sleep(5)
+ada = public_client.get_product_historic_rates('ADA-USD')
+time.sleep(5)
+ltc = public_client.get_product_historic_rates('LTC-USD')
+#+end_src
+
+#+RESULTS:
+
+
+#+begin_src python :session py :cache true
+eth = pd.DataFrame(eth, columns=["time", "low", "high", "open", "close", "volume"])
+btc = pd.DataFrame(btc, columns=["time", "low", "high", "open", "close", "volume"])
+atom = pd.DataFrame(atom, columns=["time", "low", "high", "open", "close", "volume"])
+ada = pd.DataFrame(ada, columns=["time", "low", "high", "open", "close", "volume"])
+ltc = pd.DataFrame(ltc, columns=["time", "low", "high", "open", "close", "volume"])
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :session py :cache true
+ethd = eth[['time', 'close', 'volume']]
+ethd.columns.values[1] = "eth_close"
+ethd.columns.values[2] = "eth_volume"
+
+btcd = btc[['time', 'close', 'volume']]
+btcd.columns.values[1] = "btc_close"
+btcd.columns.values[2] = "btc_volume"
+
+atomd = atom[['time', 'close', 'volume']]
+atomd.columns.values[1] = "atom_close"
+atomd.columns.values[2] = "atom_volume"
+
+adad = ada[['time', 'close', 'volume']]
+adad.columns.values[1] = "ada_close"
+adad.columns.values[2] = "ada_volume"
+
+ltcd = ltc[['time', 'close', 'volume']]
+ltcd.columns.values[1] = "ltc_close"
+ltcd.columns.values[2] = "ltc_volume"
+
+data = ethd.merge(btcd, on = "time")
+data = data.merge(atomd, on = "time")
+data = data.merge(adad, on = "time")
+data = data.merge(ltcd, on = "time")
+data.set_index('time', inplace=True)
+
+data = data.pct_change()[1:]
+data
+#+end_src
+
+#+RESULTS:
+#+begin_example
+            eth_close  eth_volume  btc_close  btc_volume  atom_close  atom_volume  ada_close  ada_volume  ltc_close  ltc_volume
+time                                                                                                                           
+1629038880   0.002878   -0.272912   0.003729   -0.566322    0.003229    -0.665810  -0.000190    9.202048   0.004482   -0.785232
+1629038820   0.001432   -0.842006   0.001807   -0.442548    0.002562    -0.126154   0.001897   -0.445789   0.001283    0.601307
+1629038760   0.000899    2.095115   0.000722   -0.299291    0.000917     1.854754   0.001183    0.083344   0.001281   -0.710490
+1629038700  -0.000773    0.380236  -0.000009   -0.302589   -0.000458    -0.831329   0.000614    0.008234  -0.000111    2.066424
+1629038640   0.002430   -0.004609   0.001218    1.689570    0.002096    -0.775137   0.001748   -0.333411   0.002114    3.065531
+...               ...         ...        ...         ...         ...          ...        ...         ...        ...         ...
+1629021480  -0.000752    0.624889  -0.000429   -0.707476   -0.000522    -0.675610  -0.000844   -0.414862  -0.000724   -0.536428
+1629021420  -0.000275   -0.060528   0.000061    4.792804   -0.001241    -0.789474  -0.002299    1.375979   0.001059   -0.763898
+1629021360   0.000126   -0.046568   0.000339    0.323860    0.001046     3.607143  -0.001129   -0.695961   0.000000    1.449336
+1629021300   0.000711    0.022483  -0.000076   -0.353646    0.000131    -0.666667   0.000330    0.250849   0.000223   -0.671973
+1629021240   0.000686    0.073074   0.000674    0.424199    0.001110    63.953488   0.001224    0.945896   0.000780   13.967535
+
+[294 rows x 10 columns]
+#+end_example
+
+
+** Training vs Test Sets
+
+#+begin_src python :session py :cache true
+train = data[0:(len(data)-30)]
+test = data[(len(data)-30): len(data)]
+#+end_src
+
+#+begin_src python :session py :cache true
+train_features = torch.tensor(train[['eth_close', 'btc_close']].values)
+train_target = torch.tensor(train['atom_close'].values)
+#+end_src
+
+#+RESULTS:
+
+
+#+begin_src python :session py :cache true :eval no
+from torch.utils.data import DataLoader
+
+train_dataloader = DataLoader(train, batch_size=64, shuffle=False)
+test_dataloader = DataLoader(test, batch_size=64, shuffle=False)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :session py :cache true :eval no
+class CustomTSDataset(Dataset):
+    def __init__(self, data, transform=None, target_transform=None):
+        self.labels = data['eth_close', 'btc_close']
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        imag = read_image(img_path)
+        label = self.img_labels.iloc[idx, 1]
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+        return image, label
+#+end_src
+
+* Build Model
+
+#+begin_src python :session py :cache true
+class AR_model(nn.Module):
+    def __init__(self):
+        super(AR_model, self).__init__()
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(10, 100),
+            nn.ReLU(),
+            nn.Linear(100, 100),
+            nn.ReLU(),
+            nn.Linear(100, 1),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+        x = self.flatten(x)
+        pred = self.linear_relu_stack(x)
+        return pred
+#+end_src
+
+#+RESULTS:
+
+
+#+begin_src python :session py :cache true :exports both :results output
+device = 'cuda'
+model = AR_model().to(device)
+model
+#+end_src
+
+#+RESULTS:
+#+begin_example
+AR_model(
+  (flatten): Flatten(start_dim=1, end_dim=-1)
+  (linear_relu_stack): Sequential(
+    (0): Linear(in_features=10, out_features=100, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=100, out_features=100, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=100, out_features=1, bias=True)
+    (5): ReLU()
+  )
+)
+#+end_example
+
+** Training
+
+#+begin_src python :session py :cache true :exports both :results output
+learning_rate = 1e-3
+batch_size = 64
+epochs = 5
+
+loss_fn = nn.MSELoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+#+end_src
+
+#+RESULTS:
+
+** Train and Test Loops
+
+#+begin_src python :session py :cache true :exports both :results output
+def train_loop(dataloader, model, loss_fn, optimizer):
+    size = len(dataloader.dataset)
+    for batch, (X, y) in enumerate(dataloader):
+        # Compute prediction and loss
+        pred = model(X)
+        loss = loss_fn(pred, y)
+
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if batch % 100 == 0:
+            loss, current = loss.item(), batch * len(X)
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+def test_loop(dataloader, model, loss_fn):
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    test_loss, correct = 0, 0
+
+    with torch.no_grad():
+        for X, y in dataloader:
+            pred = model(X)
+            test_loss += loss_fn(pred, y).item()
+            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+    test_loss /= num_batches
+    correct /= size
+    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+#+end_src
+
+#+RESULTS:
+
+
+** Train/Test
+
+#+begin_src python :session py :cache true :exports both :results output
+for t in range(epochs):
+    print(f"Epoch {t+1}\n-------------------------------")
+    train_loop(train_dataloader, model, loss_fn, optimizer)
+    test_loop(test_dataloader, model, loss_fn)
+print("Done!")
+#+end_src
+
+#+RESULTS:
+: Epoch 1
+: -------------------------------
