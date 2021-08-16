@@ -109,35 +109,6 @@ train_target = torch.tensor(train['atom_close'].values)
 #+RESULTS:
 
 
-#+begin_src python :session py :cache true :eval no
-from torch.utils.data import DataLoader
-
-train_dataloader = DataLoader(train, batch_size=64, shuffle=False)
-test_dataloader = DataLoader(test, batch_size=64, shuffle=False)
-#+end_src
-
-#+RESULTS:
-
-#+begin_src python :session py :cache true :eval no
-class CustomTSDataset(Dataset):
-    def __init__(self, data, transform=None, target_transform=None):
-        self.labels = data['eth_close', 'btc_close']
-        self.transform = transform
-        self.target_transform = target_transform
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        imag = read_image(img_path)
-        label = self.img_labels.iloc[idx, 1]
-        if self.transform:
-            image = self.transform(image)
-        if self.target_transform:
-            label = self.target_transform(label)
-        return image, label
-#+end_src
-
 * Build Model
 
 #+begin_src python :session py :cache true
@@ -146,7 +117,7 @@ class AR_model(nn.Module):
         super(AR_model, self).__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(10, 100),
+            nn.Linear(2, 100),
             nn.ReLU(),
             nn.Linear(100, 100),
             nn.ReLU(),
@@ -197,54 +168,3 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
 #+RESULTS:
 
-** Train and Test Loops
-
-#+begin_src python :session py :cache true :exports both :results output
-def train_loop(dataloader, model, loss_fn, optimizer):
-    size = len(dataloader.dataset)
-    for batch, (X, y) in enumerate(dataloader):
-        # Compute prediction and loss
-        pred = model(X)
-        loss = loss_fn(pred, y)
-
-        # Backpropagation
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
-def test_loop(dataloader, model, loss_fn):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    test_loss, correct = 0, 0
-
-    with torch.no_grad():
-        for X, y in dataloader:
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
-#+end_src
-
-#+RESULTS:
-
-
-** Train/Test
-
-#+begin_src python :session py :cache true :exports both :results output
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    train_loop(train_dataloader, model, loss_fn, optimizer)
-    test_loop(test_dataloader, model, loss_fn)
-print("Done!")
-#+end_src
-
-#+RESULTS:
-: Epoch 1
-: -------------------------------
