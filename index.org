@@ -1,4 +1,4 @@
-#+title: Predicting Ethereum
+#+title: Predicting Crypto Returns with PyTorch
 #+author: Matt Brigida
 #+SETUPFILE: https://fniessen.github.io/org-html-themes/org/theme-readtheorg.setup
 
