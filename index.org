@@ -1,6 +1,6 @@
 #+title: Predicting Ethereum
 #+author: Matt Brigida
-#+SETUPFILE: https://fniessen.github.io/org-html-themes/org/theme-read-the-org.setup
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/org/theme-readtheorg.setup
 
 
 * Import Libraries and Get Data
@@ -93,6 +93,7 @@ time
 [294 rows x 10 columns]
 #+end_example
 
+* Pytorch Neural Network
 
 ** Training vs Test Sets
 
@@ -101,70 +102,158 @@ train = data[0:(len(data)-30)]
 test = data[(len(data)-30): len(data)]
 #+end_src
 
+*** Lag Variables
+
+First pop the targets, which are not lagged.
+
 #+begin_src python :session py :cache true
-train_features = torch.tensor(train[['eth_close', 'btc_close']].values)
-train_target = torch.tensor(train['atom_close'].values)
+train_target = train.pop('atom_close')
+train_target = train_target[1:]
+test_target = test.pop('atom_close')
+test_target = test_target[1:]
+#+end_src
+
+Lag the RHS variables.
+
+#+begin_src python :session py :cache true
+train_features = train.shift(1)[1:]
+test_features = test.shift(1)[1:]
+#+end_src
+
+#+begin_src python :session py :cache true
+train_features = torch.tensor(train_features.values, device='cuda')
+train_target = torch.tensor(train_target.values, device='cuda')
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :session py :cache true
+test_features = torch.tensor(test_features.values, device='cuda')
+test_target = torch.tensor(test_target.values, device='cuda')
 #+end_src
 
 #+RESULTS:
 
 
-* Build Model
+
+** Build Model
+
+*** More Simple Model
 
 #+begin_src python :session py :cache true
-class AR_model(nn.Module):
-    def __init__(self):
-        super(AR_model, self).__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(2, 100),
-            nn.ReLU(),
-            nn.Linear(100, 100),
-            nn.ReLU(),
-            nn.Linear(100, 1),
-            nn.ReLU()
-        )
-
-    def forward(self, x):
-        x = self.flatten(x)
-        pred = self.linear_relu_stack(x)
-        return pred
+model = torch.nn.Sequential(
+    torch.nn.Linear(9, 10),
+    torch.nn.Linear(10, 1)
+)
 #+end_src
 
 #+RESULTS:
 
 
-#+begin_src python :session py :cache true :exports both :results output
+
+#+begin_src python :session py :cache true :exports both :results output :eval yes
 device = 'cuda'
-model = AR_model().to(device)
+#model = AR_model().to(device)
+model = model.to(device)
 model
 #+end_src
 
 #+RESULTS:
-#+begin_example
-AR_model(
-  (flatten): Flatten(start_dim=1, end_dim=-1)
-  (linear_relu_stack): Sequential(
-    (0): Linear(in_features=10, out_features=100, bias=True)
-    (1): ReLU()
-    (2): Linear(in_features=100, out_features=100, bias=True)
-    (3): ReLU()
-    (4): Linear(in_features=100, out_features=1, bias=True)
-    (5): ReLU()
-  )
-)
-#+end_example
 
-** Training
+*** Training
 
 #+begin_src python :session py :cache true :exports both :results output
 learning_rate = 1e-3
-batch_size = 64
-epochs = 5
 
 loss_fn = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 #+end_src
 
 #+RESULTS:
 
+#+begin_src python :session py :cache true :exports both :results output
+for t in range(4000):
+
+    # Forward pass: compute predicted y by passing x to the model. Module objects
+    # override the __call__ operator so you can call them like functions. When
+    # doing so you pass a Tensor of input data to the Module and it produces
+    # a Tensor of output data.
+    y_pred = model(train_features.float()).float()
+
+    # Compute and print loss. We pass Tensors containing the predicted and true
+    # values of y, and the loss function returns a Tensor containing the
+    # loss.
+    loss = loss_fn(y_pred, train_target.float())
+    if t % 100 == 99:
+        print(t, loss.item())
+
+    # Zero the gradients before running the backward pass.
+    model.zero_grad()
+
+    # Backward pass: compute gradient of the loss with respect to all the learnable
+    # parameters of the model. Internally, the parameters of each Module are stored
+    # in Tensors with requires_grad=True, so this call will compute gradients for
+    # all learnable parameters in the model.
+    loss.backward()
+
+    # Update the weights using gradient descent. Each parameter is a Tensor, so
+    # we can access its gradients like we did before.
+    with torch.no_grad():
+        for param in model.parameters():
+            param -= learning_rate * param.grad
+#+end_src
+
+#+RESULTS:
+#+begin_example
+99 0.05186983570456505
+199 0.022924993187189102
+299 0.011585462838411331
+399 0.006629244424402714
+499 0.004201109055429697
+599 0.0028635328635573387
+699 0.0020454032346606255
+799 0.001503319013863802
+899 0.0011241636238992214
+999 0.000849790230859071
+1099 0.0006470752414315939
+1199 0.0004953877069056034
+1299 0.0003809727495536208
+1399 0.00029422054649330676
+1499 0.00022820846061222255
+1599 0.00017785072850529104
+1699 0.00013936242612544447
+1799 0.00010990101873176172
+1899 8.732201240491122e-05
+1999 6.99987358530052e-05
+2099 5.669524398399517e-05
+2199 4.64686490886379e-05
+2299 3.860050128423609e-05
+2399 3.2540840038564056e-05
+2499 2.7869326004292816e-05
+2599 2.4264318199129775e-05
+2699 2.147868690371979e-05
+2799 1.9323406377225183e-05
+2899 1.7653757822699845e-05
+2999 1.6357724234694615e-05
+3099 1.53501005115686e-05
+3199 1.4565261153620668e-05
+3299 1.395232629874954e-05
+3399 1.3472427781380247e-05
+3499 1.3095865142531693e-05
+3599 1.2799368960259017e-05
+3699 1.25647702589049e-05
+3799 1.2378705832816195e-05
+3899 1.2230881111463532e-05
+3999 1.2112318472645711e-05
+#+end_example
+
+*** Result
+
+#+begin_src python :session py :cache true :exports both :results output
+pred_test_target = model(test_features.float())
+#print(pred_test_target)
+test_loss = (test_target - pred_test_target).abs()
+print(test_loss.sum())
+#+end_src
+
+#+RESULTS:
+: tensor(3.4659, device='cuda:0', dtype=torch.float64, grad_fn=<SumBackward0>)
