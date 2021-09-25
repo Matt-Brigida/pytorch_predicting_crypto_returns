@@ -9,9 +9,14 @@
 import pandas as pd
 import torch
 from torch import nn
+import seaborn as sns
+sns.set_theme(style="darkgrid")
+import matplotlib.pyplot as plt
+plt.style.use("dark_background")
 #+end_src
 
 #+RESULTS:
+: None
 
   
 #+begin_src python :session py :cache true
@@ -71,6 +76,7 @@ data = data.merge(ltcd, on = "time")
 data.set_index('time', inplace=True)
 
 data = data.pct_change()[1:]
+data.to_csv("close_vol_data.csv")
 data
 #+end_src
 
@@ -78,22 +84,21 @@ data
 #+begin_example
             eth_close  eth_volume  btc_close  btc_volume  atom_close  atom_volume  ada_close  ada_volume  ltc_close  ltc_volume
 time                                                                                                                           
-1629038880   0.002878   -0.272912   0.003729   -0.566322    0.003229    -0.665810  -0.000190    9.202048   0.004482   -0.785232
-1629038820   0.001432   -0.842006   0.001807   -0.442548    0.002562    -0.126154   0.001897   -0.445789   0.001283    0.601307
-1629038760   0.000899    2.095115   0.000722   -0.299291    0.000917     1.854754   0.001183    0.083344   0.001281   -0.710490
-1629038700  -0.000773    0.380236  -0.000009   -0.302589   -0.000458    -0.831329   0.000614    0.008234  -0.000111    2.066424
-1629038640   0.002430   -0.004609   0.001218    1.689570    0.002096    -0.775137   0.001748   -0.333411   0.002114    3.065531
+1632577740  -0.000780    0.154219   0.000025    0.144183   -0.000540     0.592147  -0.003211    0.444062  -0.000593   -0.460877
+1632577680   0.000188   -0.002027  -0.000169    0.459292   -0.000859     0.115593  -0.003221   -0.841104  -0.000857   -0.889853
+1632577620  -0.000644    2.082848  -0.000444    0.991550   -0.001106     0.709477  -0.001091    1.484608   0.000066   24.193727
+1632577560  -0.001131   -0.876900  -0.000117   -0.647560    0.000000     1.137118  -0.000294   -0.010421  -0.000791   -0.967124
+1632577500   0.000738    1.264151   0.000308    0.581940    0.001673    -0.796686   0.001009   -0.341500   0.000198    4.348043
 ...               ...         ...        ...         ...         ...          ...        ...         ...        ...         ...
-1629021480  -0.000752    0.624889  -0.000429   -0.707476   -0.000522    -0.675610  -0.000844   -0.414862  -0.000724   -0.536428
-1629021420  -0.000275   -0.060528   0.000061    4.792804   -0.001241    -0.789474  -0.002299    1.375979   0.001059   -0.763898
-1629021360   0.000126   -0.046568   0.000339    0.323860    0.001046     3.607143  -0.001129   -0.695961   0.000000    1.449336
-1629021300   0.000711    0.022483  -0.000076   -0.353646    0.000131    -0.666667   0.000330    0.250849   0.000223   -0.671973
-1629021240   0.000686    0.073074   0.000674    0.424199    0.001110    63.953488   0.001224    0.945896   0.000780   13.967535
+1632560400   0.003388    0.815562   0.003340   -0.107485    0.004578    -0.366925   0.004614    0.536060   0.004629   -0.541633
+1632560340  -0.000790   -0.269769  -0.001497    1.789701   -0.004192    -0.218117  -0.004979   -0.027378  -0.005581    0.565607
+1632560280   0.001279    0.910556   0.001156    1.717195    0.002447     0.678753   0.000992    0.340219   0.002349    0.128134
+1632560220  -0.001538   -0.435504  -0.002279   -0.660321   -0.001880    -0.407981  -0.001379   -0.586200  -0.002669   -0.620945
+1632560160  -0.001922    0.568542  -0.004131   -0.065882   -0.000538    -0.339289  -0.001424    0.563350  -0.003329   -0.146626
 
 [294 rows x 10 columns]
 #+end_example
 
-* Pytorch Neural Network
 
 ** Training vs Test Sets
 
@@ -101,6 +106,8 @@ time
 train = data[0:(len(data)-30)]
 test = data[(len(data)-30): len(data)]
 #+end_src
+
+#+RESULTS:
 
 *** Lag Variables
 
@@ -113,12 +120,30 @@ test_target = test.pop('atom_close')
 test_target = test_target[1:]
 #+end_src
 
+#+RESULTS:
+
 Lag the RHS variables.
 
 #+begin_src python :session py :cache true
 train_features = train.shift(1)[1:]
 test_features = test.shift(1)[1:]
 #+end_src
+
+#+RESULTS:
+
+* Viz
+
+#+begin_src python :session py
+eth_target_plot = sns.relplot(x=train_features["eth_close"], y=train_target)
+eth_target_plot.savefig("eth_target_plot.png")
+#+end_src
+
+#+RESULTS:
+: None
+
+[[./eth_target_plot.png]]
+
+* Pytorch Neural Network
 
 #+begin_src python :session py :cache true
 train_features = torch.tensor(train_features.values, device='cuda')
@@ -133,8 +158,6 @@ test_target = torch.tensor(test_target.values, device='cuda')
 #+end_src
 
 #+RESULTS:
-
-
 
 ** Build Model
 
@@ -173,30 +196,16 @@ loss_fn = nn.MSELoss()
 #+begin_src python :session py :cache true :exports both :results output
 for t in range(4000):
 
-    # Forward pass: compute predicted y by passing x to the model. Module objects
-    # override the __call__ operator so you can call them like functions. When
-    # doing so you pass a Tensor of input data to the Module and it produces
-    # a Tensor of output data.
     y_pred = model(train_features.float()).float()
 
-    # Compute and print loss. We pass Tensors containing the predicted and true
-    # values of y, and the loss function returns a Tensor containing the
-    # loss.
     loss = loss_fn(y_pred, train_target.float())
     if t % 100 == 99:
         print(t, loss.item())
 
-    # Zero the gradients before running the backward pass.
     model.zero_grad()
 
-    # Backward pass: compute gradient of the loss with respect to all the learnable
-    # parameters of the model. Internally, the parameters of each Module are stored
-    # in Tensors with requires_grad=True, so this call will compute gradients for
-    # all learnable parameters in the model.
     loss.backward()
 
-    # Update the weights using gradient descent. Each parameter is a Tensor, so
-    # we can access its gradients like we did before.
     with torch.no_grad():
         for param in model.parameters():
             param -= learning_rate * param.grad
@@ -252,8 +261,18 @@ for t in range(4000):
 pred_test_target = model(test_features.float())
 #print(pred_test_target)
 test_loss = (test_target - pred_test_target).abs()
-print(test_loss.sum())
+print(f'The mean loss is: {test_loss.mean()}')
+print(f'The standdard deviation of the test returns is: {test_target.std()}')
 #+end_src
 
 #+RESULTS:
-: tensor(3.4659, device='cuda:0', dtype=torch.float64, grad_fn=<SumBackward0>)
+: The mean loss is: 0.008173128249004055
+: The standdard deviation of the test returns is: 0.0011275225052620012
+
+So the model is performing poorly.
+
+* Pytorch Pyro
+
+#+begin_comment
+https://pyro.ai/examples/forecasting_i.html
+#+end_comment

@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2021-09-25 Sat 10:14 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Predicting Crypto Returns with PyTorch</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Matt Brigida" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/src/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Predicting Crypto Returns with PyTorch</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orgd473d81">1. Import Libraries and Get Data</a>
+<ul>
+<li><a href="#org7601d15">1.1. Training vs Test Sets</a>
+<ul>
+<li><a href="#orgc49766b">1.1.1. Lag Variables</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#org935c9e2">2. Viz</a></li>
+<li><a href="#org0b7afe4">3. Pytorch Neural Network</a>
+<ul>
+<li><a href="#orgf13a7a8">3.1. Build Model</a>
+<ul>
+<li><a href="#org62ec6bd">3.1.1. More Simple Model</a></li>
+<li><a href="#orgbb9e68f">3.1.2. Training</a></li>
+<li><a href="#orgc2dec95">3.1.3. Result</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#org8bc343d">4. Pytorch Pyro</a></li>
+</ul>
+</div>
+</div>
+
+
+<div id="outline-container-orgd473d81" class="outline-2">
+<h2 id="orgd473d81"><span class="section-number-2">1.</span> Import Libraries and Get Data</h2>
+<div class="outline-text-2" id="text-1">
+<div class="org-src-container">
+<pre class="src src-python">import pandas as pd
+import torch
+from torch import nn
+import seaborn as sns
+sns.set_theme(style="darkgrid")
+import matplotlib.pyplot as plt
+plt.style.use("dark_background")
+</pre>
+</div>
+
+
+<div class="org-src-container">
+<pre class="src src-python">import cbpro
+import time
+public_client = cbpro.PublicClient()
+
+eth = public_client.get_product_historic_rates('ETH-USD')
+time.sleep(5)
+btc = public_client.get_product_historic_rates('BTC-USD')
+time.sleep(5)
+atom = public_client.get_product_historic_rates('ATOM-USD')
+time.sleep(5)
+ada = public_client.get_product_historic_rates('ADA-USD')
+time.sleep(5)
+ltc = public_client.get_product_historic_rates('LTC-USD')
+</pre>
+</div>
+
+
+<div class="org-src-container">
+<pre class="src src-python">eth = pd.DataFrame(eth, columns=["time", "low", "high", "open", "close", "volume"])
+btc = pd.DataFrame(btc, columns=["time", "low", "high", "open", "close", "volume"])
+atom = pd.DataFrame(atom, columns=["time", "low", "high", "open", "close", "volume"])
+ada = pd.DataFrame(ada, columns=["time", "low", "high", "open", "close", "volume"])
+ltc = pd.DataFrame(ltc, columns=["time", "low", "high", "open", "close", "volume"])
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-python">ethd = eth[['time', 'close', 'volume']]
+ethd.columns.values[1] = "eth_close"
+ethd.columns.values[2] = "eth_volume"
+
+btcd = btc[['time', 'close', 'volume']]
+btcd.columns.values[1] = "btc_close"
+btcd.columns.values[2] = "btc_volume"
+
+atomd = atom[['time', 'close', 'volume']]
+atomd.columns.values[1] = "atom_close"
+atomd.columns.values[2] = "atom_volume"
+
+adad = ada[['time', 'close', 'volume']]
+adad.columns.values[1] = "ada_close"
+adad.columns.values[2] = "ada_volume"
+
+ltcd = ltc[['time', 'close', 'volume']]
+ltcd.columns.values[1] = "ltc_close"
+ltcd.columns.values[2] = "ltc_volume"
+
+data = ethd.merge(btcd, on = "time")
+data = data.merge(atomd, on = "time")
+data = data.merge(adad, on = "time")
+data = data.merge(ltcd, on = "time")
+data.set_index('time', inplace=True)
+
+data = data.pct_change()[1:]
+data.to_csv("close_vol_data.csv")
+data
+</pre>
+</div>
+</div>
+
+
+<div id="outline-container-org7601d15" class="outline-3">
+<h3 id="org7601d15"><span class="section-number-3">1.1.</span> Training vs Test Sets</h3>
+<div class="outline-text-3" id="text-1-1">
+<div class="org-src-container">
+<pre class="src src-python">train = data[0:(len(data)-30)]
+test = data[(len(data)-30): len(data)]
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgc49766b" class="outline-4">
+<h4 id="orgc49766b"><span class="section-number-4">1.1.1.</span> Lag Variables</h4>
+<div class="outline-text-4" id="text-1-1-1">
+<p>
+First pop the targets, which are not lagged.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python">train_target = train.pop('atom_close')
+train_target = train_target[1:]
+test_target = test.pop('atom_close')
+test_target = test_target[1:]
+</pre>
+</div>
+
+<p>
+Lag the RHS variables.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python">train_features = train.shift(1)[1:]
+test_features = test.shift(1)[1:]
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org935c9e2" class="outline-2">
+<h2 id="org935c9e2"><span class="section-number-2">2.</span> Viz</h2>
+<div class="outline-text-2" id="text-2">
+<div class="org-src-container">
+<pre class="src src-python">eth_target_plot = sns.relplot(x=train_features["eth_close"], y=train_target)
+eth_target_plot.savefig("eth_target_plot.png")
+</pre>
+</div>
+
+
+<div id="org3913c9b" class="figure">
+<p><img src="./eth_target_plot.png" alt="eth_target_plot.png" />
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0b7afe4" class="outline-2">
+<h2 id="org0b7afe4"><span class="section-number-2">3.</span> Pytorch Neural Network</h2>
+<div class="outline-text-2" id="text-3">
+<div class="org-src-container">
+<pre class="src src-python">train_features = torch.tensor(train_features.values, device='cuda')
+train_target = torch.tensor(train_target.values, device='cuda')
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-python">test_features = torch.tensor(test_features.values, device='cuda')
+test_target = torch.tensor(test_target.values, device='cuda')
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgf13a7a8" class="outline-3">
+<h3 id="orgf13a7a8"><span class="section-number-3">3.1.</span> Build Model</h3>
+<div class="outline-text-3" id="text-3-1">
+</div>
+<div id="outline-container-org62ec6bd" class="outline-4">
+<h4 id="org62ec6bd"><span class="section-number-4">3.1.1.</span> More Simple Model</h4>
+<div class="outline-text-4" id="text-3-1-1">
+<div class="org-src-container">
+<pre class="src src-python">model = torch.nn.Sequential(
+    torch.nn.Linear(9, 10),
+    torch.nn.Linear(10, 1)
+)
+</pre>
+</div>
+
+
+
+<div class="org-src-container">
+<pre class="src src-python">device = 'cuda'
+#model = AR_model().to(device)
+model = model.to(device)
+model
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgbb9e68f" class="outline-4">
+<h4 id="orgbb9e68f"><span class="section-number-4">3.1.2.</span> Training</h4>
+<div class="outline-text-4" id="text-3-1-2">
+<div class="org-src-container">
+<pre class="src src-python">learning_rate = 1e-3
+
+loss_fn = nn.MSELoss()
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-python">for t in range(4000):
+
+    y_pred = model(train_features.float()).float()
+
+    loss = loss_fn(y_pred, train_target.float())
+    if t % 100 == 99:
+	print(t, loss.item())
+
+    model.zero_grad()
+
+    loss.backward()
+
+    with torch.no_grad():
+	for param in model.parameters():
+	    param -= learning_rate * param.grad
+</pre>
+</div>
+
+<pre class="example" id="orgd94c68b">
+/usr/lib/python3.9/site-packages/torch/nn/modules/loss.py:528: UserWarning: Using a target size (torch.Size([267])) that is different to the input size (torch.Size([267, 1])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)
+99 0.0893305093050003
+199 0.047384943813085556
+299 0.028021186590194702
+399 0.017340470105409622
+499 0.011109192855656147
+599 0.00731393788009882
+699 0.004917584825307131
+799 0.0033594025298953056
+899 0.002322547137737274
+999 0.0016203098930418491
+1099 0.0011383295059204102
+1199 0.0008041990222409368
+1299 0.0005708118551410735
+1399 0.0004068514099344611
+1499 0.0002911509945988655
+1599 0.00020922270778100938
+1699 0.00015104765770956874
+1799 0.00010964881221298128
+1899 8.013638580450788e-05
+1999 5.906675141886808e-05
+2099 4.4007199903717265e-05
+2199 3.3232950954698026e-05
+2299 2.551826946728397e-05
+2399 1.9990910004707985e-05
+2499 1.602855627425015e-05
+2599 1.3186661817599088e-05
+2699 1.1147843906655908e-05
+2799 9.68440235737944e-06
+2899 8.634114237793256e-06
+2999 7.879962140577845e-06
+3099 7.3384462666581385e-06
+3199 6.949339422135381e-06
+3299 6.669947197224246e-06
+3399 6.469147137977416e-06
+3499 6.325087269942742e-06
+3599 6.221415333129698e-06
+3699 6.146963642095216e-06
+3799 6.0935772125958465e-06
+3899 6.054961431800621e-06
+3999 6.027458766766358e-06
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgc2dec95" class="outline-4">
+<h4 id="orgc2dec95"><span class="section-number-4">3.1.3.</span> Result</h4>
+<div class="outline-text-4" id="text-3-1-3">
+<div class="org-src-container">
+<pre class="src src-python">pred_test_target = model(test_features.float())
+#print(pred_test_target)
+test_loss = (test_target - pred_test_target).abs()
+print(f'The mean loss is: {test_loss.mean()}')
+print(f'The standdard deviation of the test returns is: {test_target.std()}')
+</pre>
+</div>
+
+<pre class="example">
+The mean loss is: 0.0020564117175871544
+The standdard deviation of the test returns is: 0.002510482820326549
+</pre>
+
+
+<p>
+So the model is performing poorly.
+</p>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org8bc343d" class="outline-2">
+<h2 id="org8bc343d"><span class="section-number-2">4.</span> Pytorch Pyro</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Matt Brigida</p>
+<p class="date">Created: 2021-09-25 Sat 10:14</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
