@@ -276,3 +276,24 @@ So the model is performing poorly.
 #+begin_comment
 https://pyro.ai/examples/forecasting_i.html
 #+end_comment
+
+
+
+* Tensorflow
+
+* Linear Vector-Autoregression
+
+We'll use R:
+
+
+#+begin_src R :session *R* :exports both :results output
+library(vars)
+data <- read.csv("./close_vol_data.csv")
+data <- data[,-1]
+sd(VAR(data)$varresult$atom_close$residuals)
+#+end_src
+
+#+RESULTS:
+: [1] 0.002377701
+
+Slightly larger than the standard deviation of the test returns, but lower than PyTorch.  Of course this formulation uses more than just lags.
