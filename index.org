@@ -262,7 +262,7 @@ pred_test_target = model(test_features.float())
 #print(pred_test_target)
 test_loss = (test_target - pred_test_target).abs()
 print(f'The mean loss is: {test_loss.mean()}')
-print(f'The standdard deviation of the test returns is: {test_target.std()}')
+print(f'The standard deviation of the test returns is: {test_target.std()}')
 #+end_src
 
 #+RESULTS:
@@ -277,9 +277,100 @@ So the model is performing poorly.
 https://pyro.ai/examples/forecasting_i.html
 #+end_comment
 
+#+begin_src python :session pyro :cache true :exports both :results output
+import torch
+import pyro
+import pyro.distributions as dist
+import pyro.poutine as poutine
+from pyro.contrib.examples.bart import load_bart_od
+from pyro.contrib.forecast import ForecastingModel, Forecaster, backtest, eval_crps
+from pyro.infer.reparam import LocScaleReparam, StableReparam
+from pyro.ops.tensor_utils import periodic_cumsum, periodic_repeat, periodic_features
+from pyro.ops.stats import quantile
+import matplotlib.pyplot as plt
+import pandas as pd
+#+end_src
 
+#+RESULTS:
+
+
+** Training vs Test Sets (again new session)
+
+#+begin_src python :session pyro :cache true
+data = pd.read_csv("./close_vol_data.csv")
+train = data[0:(len(data)-30)]
+test = data[(len(data)-30): len(data)]
+#+end_src
+
+#+RESULTS:
+
+*** Lag Variables
+
+First pop the targets, which are not lagged.
+
+#+begin_src python :session pyro :cache true
+train_target = train.pop('atom_close')
+train_target = train_target[1:]
+test_target = test.pop('atom_close')
+test_target = test_target[1:]
+#+end_src
+
+#+RESULTS:
+
+Lag the RHS variables.
+
+#+begin_src python :session pyro :cache true
+train_features = train.shift(1)[1:]
+test_features = test.shift(1)[1:]
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :session pyro :cache true
+train_features = torch.tensor(train_features.values, device='cuda')
+train_target = torch.tensor(train_target.values, device='cuda')
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :session pyro :cache true
+test_features = torch.tensor(test_features.values, device='cuda')
+test_target = torch.tensor(test_target.values, device='cuda')
+#+end_src
+
+#+RESULTS:
+
+
+#+begin_src python :session pyro :cache true
+class Model1(ForecastingModel):
+    def model(self, zero_data, covariates):
+        data_dim = zero_data.size(-1)
+        feature_dim = covariates
+
+        bias = pyro.sample("bias", dist.Normal(0, 10).expand([data_dim]).to_event(1))
+        weight = pyro.sample("weight", dist.Normal(0, 0.1).expand([feature_dim]).to_event(1))
+        prediction = bias + (weight * covariates).sum(-1, keepdim=True)
+
+        assert prediction.shape[-2:] == zero_data.shape
+
+        noise_scale = pyro.sample("noise_scale", dist.LogNormal(-5, 5).expand([1]).to_event(1))
+        noise_dist = dist.Normal(0, noise_scale)
+
+        self.predict(noise_dist, prediction)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :session pyro :cache true
+forecaster = Forecaster(Model1(), train_target, train_features, learning_rate=0.1)
+#+end_src
+
+#+RESULTS:
 
 * Tensorflow
+
+
+
 
 * Linear Vector-Autoregression
 
